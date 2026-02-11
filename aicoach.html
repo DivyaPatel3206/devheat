@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CogniLearn | STUDY COACH</title>
+
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@800&family=Space+Grotesk:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --hyper-pink: #ff007a;
+            --hyper-cyan: #00f2ff;
+            --void: #020205;
+            --glass-white: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            cursor: none !important;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--void);
+            color: #fafafa;
+            font-family: 'Space Grotesk', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        /* --- HYPER-CURSORS --- */
+        #cursor-main {
+            width: 6px;
+            height: 6px;
+            background: white;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+        }
+
+        #cursor-aura {
+            width: 35px;
+            height: 35px;
+            border: 1px solid var(--hyper-cyan);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s ease-out;
+        }
+
+        /* --- DISCRETE COMMAND NAV --- */
+        .discrete-nav {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            padding: 10px 25px;
+            background: rgba(10, 10, 15, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 100px;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .discrete-nav::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 100px;
+            padding: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .discrete-nav:hover {
+            background: rgba(15, 15, 20, 0.9);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 50px -10px rgba(0, 242, 255, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            transform: translateX(-50%) translateY(-2px);
+        }
+
+        .nav-link {
+            font-family: 'JetBrains Mono';
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: #888;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            padding: 6px 12px;
+            border-radius: 100px;
+        }
+
+        .nav-link i {
+            transition: transform 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--hyper-cyan);
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link:hover i {
+            transform: scale(1.2) rotate(-10deg);
+            filter: drop-shadow(0 0 5px var(--hyper-cyan));
+        }
+
+        .auth-btn {
+            background: transparent;
+            color: white;
+            padding: 8px 24px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 10px;
+            border: 1px solid var(--hyper-pink);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 0, 122, 0.2);
+            margin-left: 10px;
+        }
+
+        .auth-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .auth-btn:hover {
+            background: var(--hyper-pink);
+            box-shadow: 0 0 25px rgba(255, 0, 122, 0.6);
+            transform: scale(1.05);
+            text-shadow: none;
+            color: white;
+        }
+
+        .auth-btn:hover::before {
+            left: 100%;
+        }
+
+        /* --- RADIAL ORBITAL --- */
+        .orbit-nav {
+            position: fixed;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .orbit-item {
+            width: 45px;
+            height: 45px;
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-white);
+            transition: 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .orbit-item:hover,
+        .orbit-item.active {
+            border-color: var(--hyper-cyan);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+            transform: scale(1.1) translateX(-5px);
+        }
+
+        /* --- VIEWPORT ENGINE --- */
+        .viewport {
+            height: 100vh;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+        }
+
+        .viewport::-webkit-scrollbar {
+            display: none;
+        }
+
+        section {
+            height: 100vh;
+            width: 100vw;
+            scroll-snap-align: start;
+            flex-shrink: 0;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding: 0 8%;
+        }
+
+        /* --- DASHBOARD ELEMENTS --- */
+        .hologram-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .data-stream {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--hyper-cyan), transparent);
+            animation: flow 4s linear infinite;
+        }
+
+        @keyframes flow {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        .big-title {
+            font-size: 8vw;
+            line-height: 0.9;
+            font-family: 'Syne';
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="cursor-main"></div>
+    <div id="cursor-aura"></div>
+    <div id="canvas-container" class="fixed inset-0 z-[-1]"></div>
+
+    <nav class="discrete-nav">
+        <a href="#genesis" class="nav-link"><i data-lucide="brain-circuit" class="w-3 h-3"></i> Core</a>
+        <a href="#dashboard" class="nav-link"><i data-lucide="bar-chart-2" class="w-3 h-3"></i> Monitor</a>
+        <a href="#vault" class="nav-link"><i data-lucide="database" class="w-3 h-3"></i> Knowledge</a>
+        <div class="h-4 w-[1px] bg-zinc-800"></div>
+        <a href="login.html" class="nav-link">Connect</a>
+        <a href="login.html" class="auth-btn nav-link text-white hover:text-white">Neural Sync</a>
+    </nav>
+
+    <div class="orbit-nav">
+        <div onclick="scrollToSection(0)" class="orbit-item active"><i data-lucide="power" class="w-4 h-4"></i></div>
+        <div onclick="scrollToSection(1)" class="orbit-item"><i data-lucide="grid" class="w-4 h-4"></i></div>
+        <div onclick="scrollToSection(2)" class="orbit-item"><i data-lucide="activity" class="w-4 h-4"></i></div>
+        <div onclick="scrollToSection(3)" class="orbit-item"><i data-lucide="terminal" class="w-4 h-4"></i></div>
+    </div>
+
+    <main class="viewport" id="main-viewport">
+
+        <section id="genesis">
+            <div class="grid grid-cols-12 w-full gap-8">
+                <div class="col-span-8">
+                    <div class="flex items-center gap-4 mb-4">
+                        <span class="w-12 h-[1px] bg-pink-500"></span>
+                        <span class="font-mono text-[10px] tracking-[0.4em] text-pink-500">LEARNING_BOOT_V4</span>
+                    </div>
+                    <h1 class="big-title mb-8">
+                        AI ORIENTED<br>
+                        <span class="text-transparent" style="-webkit-text-stroke: 1px white;">Study Coach.</span>
+                    </h1>
+                    <p class="max-w-md text-zinc-500 leading-relaxed font-light">
+                        CogniLearn is your AI-powered learning companion. It synthesizes lectures, PDFs, and notes into
+                        intelligent study paths, adapting to your cognitive state.
+                    </p>
+                </div>
+                <div class="col-span-4 flex items-end">
+                    <div class="hologram-card p-10 w-full">
+                        <div class="data-stream"></div>
+                        <h4 class="font-mono text-[10px] text-zinc-600 mb-8 uppercase">Retention Index</h4>
+                        <div class="flex justify-between items-end">
+                            <span class="text-5xl font-black">94<span class="text-xl text-cyan-400">%</span></span>
+                            <span class="text-[9px] text-emerald-500 font-mono mb-2">OPTIMAL_RECALL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard">
+            <div class="w-full">
+                <h2 class="text-xs font-mono tracking-[0.5em] text-cyan-500 mb-10 uppercase">
+                    Cognitive_Load_Analysis</h2>
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="hologram-card p-6 h-64 flex flex-col justify-between">
+                        <div class="flex justify-between"><i data-lucide="zap" class="text-cyan-400"></i> <span
+                                class="text-[9px] font-mono text-zinc-500">FOCUS_DEPTH</span></div>
+                        <div>
+                            <div class="text-3xl font-bold mb-2">Deep Flow</div>
+                            <div class="w-full h-1 bg-zinc-900">
+                                <div class="w-3/4 h-full bg-cyan-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hologram-card p-6 h-64 flex flex-col justify-between border-pink-500/20">
+                        <div class="flex justify-between"><i data-lucide="alert-triangle" class="text-pink-500"></i>
+                            <span class="text-[9px] font-mono text-zinc-500">WEAK_TOPIC</span>
+                        </div>
+                        <div class="text-3xl font-bold mb-2 text-pink-500">ALGEBRA II</div>
+                        <p class="text-[10px] text-zinc-600 uppercase">Concept reinforcement required immediately.</p>
+                    </div>
+                    <div class="col-span-2 hologram-card p-6 overflow-hidden">
+                        <div class="flex justify-between mb-8"><span
+                                class="text-[10px] font-mono">MEMORY_RETENTION_CURVE</span> <i data-lucide="maximize-2"
+                                class="w-3 h-3 text-zinc-700"></i></div>
+                        <div class="flex items-end gap-1 h-32">
+                            <script>
+                                for (let i = 0; i < 30; i++) {
+                                    const h = Math.random() * 100;
+                                    document.write(`<div class="flex-1 bg-zinc-800" style="height: ${h}%"></div>`);
+                                }
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="vault">
+            <div class="grid grid-cols-3 gap-6 w-full">
+                <div class="col-span-1">
+                    <h2 class="text-5xl font-black mb-6 uppercase italic">Knowledge Core</h2>
+                    <p class="text-zinc-500 mb-8">Multimodal ingestion engine active. Converting unstructured data into
+                        intelligence.</p>
+                    <input type="file" id="fileInput" class="hidden" />
+                    <button onclick="document.getElementById('fileInput').click()"
+                        class="px-8 py-4 border border-zinc-700 text-[10px] uppercase tracking-widest font-bold hover:bg-white hover:text-black transition">
+                        Upload Material
+                    </button>
+
+                    <div id="api-output" class="mt-6 text-sm text-cyan-400"></div>
+
+                </div>
+                <div class="col-span-2 grid grid-cols-2 gap-4">
+                    <div class="hologram-card p-8 group hover:border-cyan-500/50 transition cursor-pointer">
+                        <span class="text-[9px] font-mono text-zinc-600">INPUT_VECTOR_01</span>
+                        <h5 class="text-xl font-bold mt-2">VIDEO_TO_NOTES</h5>
+                        <p class="text-[10px] text-zinc-500 mt-2">Lecture transcription & summarization active.</p>
+                    </div>
+                    <div class="hologram-card p-8 group hover:border-pink-500/50 transition cursor-pointer">
+                        <span class="text-[9px] font-mono text-zinc-600">INPUT_VECTOR_02</span>
+                        <div class="hologram-card p-8 group hover:border-pink-500/50 transition cursor-pointer"
+                            onclick="generateConcepts()">
+
+                            <p class="text-[10px] text-zinc-500 mt-2">Mapping inter-related knowledge domains.</p>
+                        </div>
+                        <div
+                            class="hologram-card p-8 group border-dashed hover:border-emerald-500/50 transition cursor-pointer">
+                            <span class="text-[9px] font-mono text-zinc-600">GEN_TASK_01</span>
+                            <div class="hologram-card p-8 group border-dashed hover:border-emerald-500/50 transition cursor-pointer"
+                                onclick="generateQuiz()">
+
+                            </div>
+                            <div
+                                class="hologram-card p-8 group border-dashed hover:border-emerald-500/50 transition cursor-pointer">
+                                <span class="text-[9px] font-mono text-zinc-600">GEN_TASK_02</span>
+                                <h5 class="text-xl font-bold mt-2 text-zinc-400 group-hover:text-emerald-500">
+                                    ADAPTIVE_DIFF
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+        </section>
+
+    </main>
+
+    <footer
+        class="fixed bottom-0 left-0 w-full p-6 flex justify-between items-center z-50 mix-blend-difference pointer-events-none">
+        <div class="text-[9px] font-mono tracking-widest text-zinc-400 uppercase">
+            CogniLearn v4.0 // Session Time: <span id="clock">00:00:00</span>
+        </div>
+        <div class="flex gap-4">
+            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span class="text-[9px] font-mono text-zinc-400">KERNEL_ACTIVE</span>
+        </div>
+    </footer>
+
+    <script>
+        async function generateConcepts() {
+
+            const text = prompt("Enter text to extract concepts:");
+
+            if (!text) return;
+
+            outputDiv.innerHTML = "Extracting Concepts...";
+
+            const response = await fetch(API_BASE + "/concepts/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
+            });
+
+            const data = await response.json();
+
+            outputDiv.innerHTML = `
+        <h3 class="text-cyan-400 mb-2">Concepts:</h3>
+        <ul>
+            ${data.concepts.map(c => `<li>• ${c}</li>`).join("")}
+        </ul>
+    `;
+        }
+
+        lucide.createIcons();
+
+        // --- ENHANCED NEURAL CURSOR ---
+        const mainCursor = document.getElementById('cursor-main');
+        const auraCursor = document.getElementById('cursor-aura');
+
+        document.addEventListener('mousemove', (e) => {
+            gsap.to(mainCursor, { x: e.clientX, y: e.clientY, duration: 0 });
+            gsap.to(auraCursor, {
+                x: e.clientX - 17.5,
+                y: e.clientY - 17.5,
+                duration: 0.2,
+                ease: "power2.out"
+            });
+        });
+
+        // --- THREE.JS HYPER-CORE ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Neural Mesh
+        const geometry = new THREE.TorusKnotGeometry(15, 3, 200, 32);
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00f2ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.1
+        });
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        // Core Sphere
+        const coreGeo = new THREE.IcosahedronGeometry(8, 1);
+        const coreMat = new THREE.MeshBasicMaterial({ color: 0xff007a, wireframe: true, transparent: true, opacity: 0.05 });
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        scene.add(core);
+
+        camera.position.z = 50;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            mesh.rotation.y += 0.001;
+            mesh.rotation.x += 0.0005;
+            core.rotation.y -= 0.002;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- NAVIGATION ENGINE ---
+        function scrollToSection(index) {
+            const sections = document.querySelectorAll('section');
+            document.getElementById('main-viewport').scrollTo({
+                top: sections[index].offsetTop,
+                behavior: 'smooth'
+            });
+
+            document.querySelectorAll('.orbit-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+        }
+
+        // Monitor Scroll for Orbit Active States
+        const viewport = document.getElementById('main-viewport');
+        viewport.addEventListener('scroll', () => {
+            const index = Math.round(viewport.scrollTop / window.innerHeight);
+            document.querySelectorAll('.orbit-item').forEach((item, i) => {
+                item.classList.toggle('active', i === index);
+            });
+        });
+
+        // Clock System
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString('en-GB');
+        }, 1000);
+
+        // Resize Engine
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        // =============================
+        // 🔥 API CONNECTION ENGINE
+        // =============================
+
+        const API_BASE = "http://127.0.0.1:8000";
+
+        const fileInput = document.getElementById("fileInput");
+        const outputDiv = document.getElementById("api-output");
+
+        fileInput.addEventListener("change", async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            outputDiv.innerHTML = "Processing...";
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                let endpoint = "";
+
+                if (file.type.includes("video")) {
+                    endpoint = "/video-to-text/";
+                } else if (file.type === "application/pdf") {
+                    endpoint = "/pdf-to-text/";
+                } else {
+                    outputDiv.innerHTML = "Unsupported file type.";
+                    return;
+                }
+
+                const response = await fetch(API_BASE + endpoint, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                outputDiv.innerHTML = `
+            <h3 class="text-pink-400 mb-2">Output:</h3>
+            <div class="max-h-40 overflow-auto text-zinc-300">
+                ${JSON.stringify(data, null, 2)}
+            </div>
+        `;
+
+            } catch (error) {
+                outputDiv.innerHTML = "Error connecting to AI backend.";
+                console.error(error);
+            }
+        });
+
+    </script>
+</body>
+
+</html>
